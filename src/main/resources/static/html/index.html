@@ -1,0 +1,648 @@
+<!DOCTYPE HTML>
+<html lang="zh" xml:lang="zh" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta content="text/html; charset=utf-8" http-equiv="content-type"/>
+    <title>吃啥</title>
+    <script type="text/javascript" src="../js/jquery-3.3.1.min.js"></script>
+    <script type="text/javascript" src="../js/config.js"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+
+            $("#inputDish").click(function () {
+                $("#inputDishDiv").toggle();
+                $("#dishName").val('');
+                $("#ingredientName").val('');
+                $("#howToCook").val('');
+            });
+
+            $("#inputIngredient").click(function () {
+                $("#inputIngredientDiv").toggle();
+                $("#buyIngredientName").val('');
+                $("#buyQuantity").val('');
+            });
+
+            $("#inputUsage").click(function () {
+                $("#inputUsageDiv").toggle();
+                $("#useIngredientName").val('');
+                $("#useQuantity").val('');
+            });
+
+            $("#showDishes").click(function () {
+                resetCondition();
+                dishes();
+            });
+
+            $("#showFilteredDishes").click(function () {
+                dishes();
+            });
+
+            function dishes() {
+                var chkValue = [];
+                $("input[name='category']:checked").each(function () {
+                    chkValue.push($(this).val());
+                });
+                var requestParam = {
+                    keyword: $("#searchKey").val(),
+                    categories: chkValue
+                };
+                $.ajax({
+                    url: baseUrl + '/listMyDishes',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(requestParam),
+                    dataType: 'json',
+                    processData: 'false',
+                    success: function (data) {
+                        if (data.code === 200) {
+                            var tableContent = "<tr><th>名称</th><th>难易度</th><th>上次吃的日期</th><th style='width: 30%;'>操作</th></tr>";
+                            for (var i = 0; i < data.data.length; i++) {
+                                tableContent += "<tr><td>"
+                                    + data.data[i].name
+                                    + "</td><td>"
+                                    + data.data[i].category
+                                    + "</td><td>"
+                                    + data.data[i].lastDate
+                                    + "</td><td>"
+                                    + "<input id='iMadeBtn_" + data.data[i].id + "' type='button' value='做这个！'>"
+                                    + "<input id='dishDetailBtn_" + data.data[i].id + "' type='button' value='查看'>"
+                                    + "<input id='dishDeleteBtn_" + data.data[i].id + "' type='button' value='删除'>"
+                                    + "</td></tr>";
+                            }
+                            var outputTarget = $("#listTable");
+                            outputTarget.empty();
+                            outputTarget.append(tableContent);
+                            $("#detailTable").empty();
+                        } else {
+                            alert(data.message);
+                        }
+                    },
+                    error: function (XMLHttpRequest, textStatus, errorThrown) {
+                        alert('Request failed.-_-b');
+                    }
+                });
+            }
+
+            function resetCondition() {
+                $("input[name='category']").prop('checked', true);
+                $("#searchKey").val('');
+                $("#dishCondition").show();
+            }
+
+            $("#newDish").click(function () {
+                var dishName = $("#dishName").val();
+                if (dishName === null || dishName === '') {
+                    alert("需要填写菜名");
+                    return;
+                }
+                var ingredientNames = $("#ingredientName").val();
+                if (ingredientNames === null || ingredientNames === '') {
+                    alert("需要填写食材");
+                    return;
+                }
+                var requestParam = {
+                    dishName: dishName,
+                    dishCategory: $("#category").val(),
+                    ingredientNames: ingredientNames.split(','),
+                    howToCook: $("#howToCook").val()
+                };
+                $.ajax({
+                    url: baseUrl + '/iCanMake',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(requestParam),
+                    dataType: 'json',
+                    processData: 'false',
+                    success: function (data) {
+                        if (data.code === 200) {
+                            $("#inputDish").click();
+                            $("#showDishes").click();
+                            gentlyShowBox();
+                        } else {
+                            alert(data.message);
+                        }
+                    },
+                    error: function (XMLHttpRequest, textStatus, errorThrown) {
+                        alert('Request failed.-_-b');
+                    }
+                });
+            });
+
+            $("#showIngredients").click(function () {
+                $("#dishCondition").hide();
+                ingredients(false);
+            });
+
+            $("#showStockIngredients").click(function () {
+                $("#dishCondition").hide();
+                ingredients(true);
+            });
+
+            function ingredients(stockOnly) {
+                var requestParam = {
+                    stockOnly: stockOnly
+                };
+                $.ajax({
+                    url: baseUrl + '/listMyIngredients',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(requestParam),
+                    dataType: 'json',
+                    processData: 'false',
+                    success: function (data) {
+                        if (data.code === 200) {
+                            var tableContent;
+                            if (stockOnly) {
+                                tableContent = "<tr><th>名称</th><th>数量</th></tr>";
+                                for (var i = 0; i < data.data.length; i++) {
+                                    tableContent += "<tr><td>"
+                                        + data.data[i].name
+                                        + "</td><td>"
+                                        + data.data[i].quantity
+                                        + "</td></tr>";
+                                }
+                            } else {
+                                tableContent = "<tr><th>名称</th><th>数量</th><th style='width: 15%;'>操作</th></tr>";
+                                for (var j = 0; j < data.data.length; j++) {
+                                    tableContent += "<tr><td>"
+                                        + data.data[j].name
+                                        + "</td><td>"
+                                        + data.data[j].quantity
+                                        + "</td><td>"
+                                        + "<input id='ingredientDeleteBtn_" + data.data[j].id + "' type='button' value='删除'>"
+                                        + "</td></tr>";
+                                }
+                            }
+                            var outputTarget = $("#listTable");
+                            outputTarget.empty();
+                            outputTarget.append(tableContent);
+                            $("#detailTable").empty();
+                        } else {
+                            alert(data.message);
+                        }
+                    },
+                    error: function (XMLHttpRequest, textStatus, errorThrown) {
+                        alert('Request failed.-_-b');
+                    }
+                });
+            }
+
+            $("#newIngredient").click(function () {
+                var buyIngredientName = $("#buyIngredientName").val();
+                if (buyIngredientName === null || buyIngredientName === '') {
+                    alert("需要填写食材名");
+                    return;
+                }
+                var buyQuantity = $("#buyQuantity").val();
+                if (buyQuantity === null || buyQuantity === '') {
+                    alert("需要填写数量");
+                    return;
+                }
+                var requestParam = {
+                    ingredientName: buyIngredientName,
+                    quantity: buyQuantity
+                };
+                $.ajax({
+                    url: baseUrl + '/iBought',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(requestParam),
+                    dataType: 'json',
+                    processData: 'false',
+                    success: function (data) {
+                        if (data.code === 200) {
+                            $("#inputIngredient").click();
+                            $("#showStockIngredients").click();
+                            gentlyShowBox();
+                        } else {
+                            alert(data.message);
+                        }
+                    },
+                    error: function (XMLHttpRequest, textStatus, errorThrown) {
+                        alert('Request failed.-_-b');
+                    }
+                });
+            });
+
+            $("#useIngredient").click(function () {
+                var useIngredientName = $("#useIngredientName").val();
+                if (useIngredientName === null || useIngredientName === '') {
+                    alert("需要填写食材名");
+                    return;
+                }
+                var useQuantity = $("#useQuantity").val();
+                if (useQuantity === null || useQuantity === '') {
+                    alert("需要填写数量");
+                    return;
+                }
+                var requestParam = {
+                    ingredientName: useIngredientName,
+                    quantity: useQuantity
+                };
+                $.ajax({
+                    url: baseUrl + '/iUsed',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(requestParam),
+                    dataType: 'json',
+                    processData: 'false',
+                    success: function (data) {
+                        if (data.code === 200) {
+                            $("#inputUsage").click();
+                            $("#showStockIngredients").click();
+                            gentlyShowBox();
+                        } else {
+                            alert(data.message);
+                        }
+                    },
+                    error: function (XMLHttpRequest, textStatus, errorThrown) {
+                        alert('Request failed.-_-b');
+                    }
+                });
+            });
+
+            $(document).on("click", "input[id^='iMadeBtn_']", function () {
+                var requestParam = {
+                    dishId: $(this).attr("id").split("_")[1]
+                };
+                $.ajax({
+                    url: baseUrl + '/iMade',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(requestParam),
+                    dataType: 'json',
+                    processData: 'false',
+                    success: function (data) {
+                        if (data.code === 200) {
+                            $("#showDishes").click();
+                            gentlyShowBox();
+                        } else {
+                            alert(data.message);
+                        }
+                    },
+                    error: function (XMLHttpRequest, textStatus, errorThrown) {
+                        alert('Request failed.-_-b');
+                    }
+                });
+            });
+
+            $(document).on("click", "input[id^='dishDetailBtn_']", function () {
+                var requestParam = {
+                    dishId: $(this).attr("id").split("_")[1]
+                };
+                $.ajax({
+                    url: baseUrl + '/dishDetail',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(requestParam),
+                    dataType: 'json',
+                    processData: 'false',
+                    success: function (data) {
+                        if (data.code === 200) {
+                            var tableContent = "<tr><th colspan='2'>" + data.data.dishName + "</th>";
+                            tableContent += "<th style='width: 30%;'><input id='bindRecipeName' type='text' placeholder='添加食材'>";
+                            tableContent += "<input id='bindRecipeBtn_" + data.data.dishId + "' type='button' value='添加'></th></tr>";
+                            tableContent += "<tr><th>所需食材</th><th>剩余数量</th><th>操作</th></tr>";
+                            for (var i = 0; i < data.data.ingredients.length; i++) {
+                                tableContent += "<tr><td>"
+                                    + data.data.ingredients[i].name
+                                    + "</td><td>"
+                                    + data.data.ingredients[i].quantity
+                                    + "</td><td>"
+                                    + "<input id='unbindRecipeBtn_" + data.data.dishId + "_" + data.data.ingredients[i].id + "' type='button' value='移除'>"
+                                    + "</td></tr>";
+                            }
+                            tableContent += "<tr><td colspan='2'><textarea id='editHowToCook'>" + data.data.howToCook + "</textarea></td>";
+                            tableContent += "<td><input id='updateHowToCookBtn_" + data.data.dishId + "' type='button' value='更新'></td></tr>";
+                            var outputTarget = $("#detailTable");
+                            outputTarget.empty();
+                            outputTarget.append(tableContent);
+                        } else {
+                            alert(data.message);
+                        }
+                    },
+                    error: function (XMLHttpRequest, textStatus, errorThrown) {
+                        alert('Request failed.-_-b');
+                    }
+                });
+            });
+
+            $(document).on("click", "input[id^='dishDeleteBtn_']", function () {
+                if (confirm("确定要删除这道菜吗?")) {
+                    var requestParam = {
+                        dishId: $(this).attr("id").split("_")[1]
+                    };
+                    $.ajax({
+                        url: baseUrl + '/dishDelete',
+                        type: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify(requestParam),
+                        dataType: 'json',
+                        processData: 'false',
+                        success: function (data) {
+                            if (data.code === 200) {
+                                $("#showDishes").click();
+                                gentlyShowBox();
+                            } else {
+                                alert(data.message);
+                            }
+                        },
+                        error: function (XMLHttpRequest, textStatus, errorThrown) {
+                            alert('Request failed.-_-b');
+                        }
+                    });
+                }
+            });
+
+            $(document).on("click", "input[id^='bindRecipeBtn_']", function () {
+                var bindRecipeName = $("#bindRecipeName").val();
+                if (bindRecipeName === null || bindRecipeName === '') {
+                    alert("需要填写食材名");
+                    return;
+                }
+                var requestParam = {
+                    dishId: $(this).attr("id").split("_")[1],
+                    ingredientName: bindRecipeName
+                };
+                $.ajax({
+                    url: baseUrl + '/bindRecipe',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(requestParam),
+                    dataType: 'json',
+                    processData: 'false',
+                    success: function (data) {
+                        if (data.code === 200) {
+                            $("#dishDetailBtn_" + requestParam.dishId).click();
+                            gentlyShowBox();
+                        } else {
+                            alert(data.message);
+                        }
+                    },
+                    error: function (XMLHttpRequest, textStatus, errorThrown) {
+                        alert('Request failed.-_-b');
+                    }
+                });
+            });
+
+            $(document).on("click", "input[id^='unbindRecipeBtn_']", function () {
+                if (confirm("确定要移除这个食材吗?")) {
+                    var requestParam = {
+                        dishId: $(this).attr("id").split("_")[1],
+                        ingredientId: $(this).attr("id").split("_")[2]
+                    };
+                    $.ajax({
+                        url: baseUrl + '/unbindRecipe',
+                        type: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify(requestParam),
+                        dataType: 'json',
+                        processData: 'false',
+                        success: function (data) {
+                            if (data.code === 200) {
+                                $("#dishDetailBtn_" + requestParam.dishId).click();
+                                gentlyShowBox();
+                            } else {
+                                alert(data.message);
+                            }
+                        },
+                        error: function (XMLHttpRequest, textStatus, errorThrown) {
+                            alert('Request failed.-_-b');
+                        }
+                    });
+                }
+            });
+
+            $(document).on("click", "input[id^='updateHowToCookBtn_']", function () {
+                var requestParam = {
+                    dishId: $(this).attr("id").split("_")[1],
+                    howToCook: $("#editHowToCook").val()
+                };
+                $.ajax({
+                    url: baseUrl + '/dishUpdate',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(requestParam),
+                    dataType: 'json',
+                    processData: 'false',
+                    success: function (data) {
+                        if (data.code === 200) {
+                            gentlyShowBox();
+                        } else {
+                            alert(data.message);
+                        }
+                    },
+                    error: function (XMLHttpRequest, textStatus, errorThrown) {
+                        alert('Request failed.-_-b');
+                    }
+                });
+            });
+
+            $(document).on("click", "input[id^='ingredientDeleteBtn_']", function () {
+                if (confirm("确定要删除这个食材吗?")) {
+                    var requestParam = {
+                        ingredientId: $(this).attr("id").split("_")[1]
+                    };
+                    $.ajax({
+                        url: baseUrl + '/ingredientDelete',
+                        type: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify(requestParam),
+                        dataType: 'json',
+                        processData: 'false',
+                        success: function (data) {
+                            if (data.code === 200) {
+                                $("#showIngredients").click();
+                                gentlyShowBox();
+                            } else {
+                                alert(data.message);
+                            }
+                        },
+                        error: function (XMLHttpRequest, textStatus, errorThrown) {
+                            alert('Request failed.-_-b');
+                        }
+                    });
+                }
+            });
+
+            function gentlyShowBox() {
+                var messageBox = $("#messageOk");
+                messageBox.fadeIn(1000);
+                messageBox.fadeOut(1000);
+            }
+
+            /* end */
+        });
+    </script>
+
+    <style type="text/css">
+        table, td, th {
+            border: 1px solid green;
+            padding: 5px;
+        }
+
+        table {
+            width: 720px;
+        }
+
+        th {
+            background-color: green;
+            color: white;
+        }
+
+        textarea {
+            width: 450px;
+            height: 80px;
+            resize: vertical;
+        }
+
+        .button {
+            padding: 11px 9px;
+            -webkit-transition-duration: 0.4s; /* Safari */
+            transition-duration: 0.4s;
+            cursor: pointer;
+        }
+
+        .button1 {
+            background-color: #4CAF50;
+            color: white;
+            border: 2px solid #4CAF50;
+        }
+
+        .button1:hover {
+            background-color: white;
+            color: black;
+        }
+
+        .button2 {
+            background-color: #008CBA;
+            color: white;
+            border: 2px solid #008CBA;
+        }
+
+        .button2:hover {
+            background-color: white;
+            color: black;
+        }
+
+        .button3 {
+            background-color: #f44336;
+            color: white;
+            border: 2px solid #f44336;
+        }
+
+        .button3:hover {
+            background-color: white;
+            color: black;
+        }
+
+        #messageOk {
+            display: none;
+            position: absolute;
+            z-index: 999;
+            background-color: yellow;
+            width: 400px;
+            height: 250px;
+            text-align: center;
+            margin: auto;
+            border-radius: 20px;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            opacity: 0.7;
+        }
+
+        #messageOk p {
+            line-height: 250px;
+            margin: 0;
+            font-size: 32pt;
+        }
+    </style>
+</head>
+
+<body>
+<div id="operateZone">
+    <input id="inputDish" type="button" value="输入我会做的菜" class="button button1">
+    <input id="inputIngredient" type="button" value="输入我买的食材" class="button button1">
+    <input id="inputUsage" type="button" value="输入我用的食材" class="button button1">
+    <input id="showDishes" type="button" value="列出所有菜" class="button button2">
+    <input id="showIngredients" type="button" value="列出所有食材" class="button button2">
+    <input id="showStockIngredients" type="button" value="我的存货" class="button button2">
+    <input type="button" value="吃点啥？" onclick="location.href='what2eat.html'" class="button button3">
+</div>
+<hr/>
+<div id="responseZone">
+    <table id="inputDishDiv" style="display: none">
+        <tr>
+            <td style="width: 30%;"><label for="dishName">菜名</label></td>
+            <td><input id="dishName" type="text" name="dishName"/></td>
+        </tr>
+        <tr>
+            <td><label for="ingredientName">食材</label></td>
+            <td><input id="ingredientName" type="text" name="ingredientName"/></td>
+        </tr>
+        <tr>
+            <td><label for="category">常见级别</label></td>
+            <td><select id="category" name="category">
+                <option value="十分常见">十分常见</option>
+                <option value="一般常见">一般常见</option>
+                <option value="较不常见">较不常见</option>
+                <option value="极不常见">极不常见</option>
+                <option value="早餐">早餐</option>
+            </select></td>
+        </tr>
+        <tr>
+            <td><label for="howToCook">做法</label></td>
+            <td><textarea id="howToCook"></textarea></td>
+        </tr>
+        <tr>
+            <td colspan="2"><input id="newDish" type="button" value="新增"/></td>
+        </tr>
+    </table>
+    <table id="inputIngredientDiv" style="display: none">
+        <tr>
+            <td style="width: 30%;"><label for="buyIngredientName">食材名</label></td>
+            <td><input id="buyIngredientName" type="text" name="buyIngredientName"/></td>
+        </tr>
+        <tr>
+            <td><label for="buyQuantity">数量</label></td>
+            <td><input id="buyQuantity" type="text" name="buyQuantity"/></td>
+        </tr>
+        <tr>
+            <td colspan="2"><input id="newIngredient" type="button" value="我买了这些"/></td>
+        </tr>
+    </table>
+    <table id="inputUsageDiv" style="display: none">
+        <tr>
+            <td style="width: 30%;"><label for="useIngredientName">食材名</label></td>
+            <td><input id="useIngredientName" type="text" name="useIngredientName"/></td>
+        </tr>
+        <tr>
+            <td><label for="useQuantity">数量</label></td>
+            <td><input id="useQuantity" type="text" name="useQuantity"/></td>
+        </tr>
+        <tr>
+            <td colspan="2"><input id="useIngredient" type="button" value="我用了这些"/></td>
+        </tr>
+    </table>
+    <div id="dishCondition" style="display: none">
+        <input type="checkbox" id="category1" name="category" checked="checked" value="十分常见">
+        <label for="category1">十分常见</label>
+        <input type="checkbox" id="category2" name="category" checked="checked" value="一般常见">
+        <label for="category2">一般常见</label>
+        <input type="checkbox" id="category3" name="category" checked="checked" value="较不常见">
+        <label for="category3">较不常见</label>
+        <input type="checkbox" id="category4" name="category" checked="checked" value="极不常见">
+        <label for="category4">极不常见</label>
+        <input type="checkbox" id="category5" name="category" checked="checked" value="早餐">
+        <label for="category5">早餐</label>
+        <input id="searchKey" type="text" placeholder="输入菜或食材名" style="margin-left: 20px;"/>
+        <input id="showFilteredDishes" type="button" value="搜索"/>
+    </div>
+    <table id="listTable"></table>
+    <table id="detailTable"></table>
+    <div id="messageOk"><p>OK</p></div>
+</div>
+</body>
+
+</html>
