@@ -119,7 +119,6 @@ public class DishService {
         // 排除前端画面上没选择的种类
         // 排除没有食材做不了的菜
         // 按时间正序排序
-        // 按调用次数依次返回四道菜
         List<Dish> dishesFiltered = dishOp.selectAll().stream()
                 .filter(e -> e.getLastDate().compareTo(getDateRestriction()) < 0)
                 .filter(e ->
@@ -129,10 +128,21 @@ public class DishService {
                                 .filter(recipe -> recipe.getDishId() == e.getId())
                                 .allMatch(recipe -> ingredientsStock.stream().anyMatch(ingredient -> ingredient.getId() == recipe.getIngredientId())))
                 .collect(Collectors.toList());
+        // 按调用次数依次跳过四道菜
+        int filteredSize = dishesFiltered.size();
+        int windowSize = 4;
+        int skipSize = 0;
+        if (filteredSize > windowSize) {
+            skipSize = command.getCallTimes() * windowSize % filteredSize;
+            // 防止出现只剩一道菜的情况
+            if (skipSize == filteredSize - 1) {
+                skipSize = filteredSize - windowSize;
+            }
+        }
         List<FuncWhatToEatDto> res = dishesFiltered.stream()
                 .sorted(Comparator.comparing(Dish::getLastDate))
-                .skip(command.getCallTimes() * 4 % (dishesFiltered.size() == 0 ? 1 : dishesFiltered.size()))
-                .limit(4)
+                .skip(skipSize)
+                .limit(windowSize)
                 .map(e -> {
                     FuncWhatToEatDto dto = new FuncWhatToEatDto();
                     dto.setDishId(e.getId());
